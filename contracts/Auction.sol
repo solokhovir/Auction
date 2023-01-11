@@ -44,19 +44,22 @@ contract Auction {
 
     function end() external onlySeller {        
         ended = true;
-        if(highestBidder != address(0)) {
-            seller.transfer(highestBid);
-        }
+        seller.transfer(highestBid);
         emit End(highestBidder, highestBid);
     }
 
     function withdraw() external {
         if (ended != true) {
             uint refundAmount = bids[msg.sender];
-            require(refundAmount > 0, "Incorrect refund amount");
-            bids[msg.sender] = 0;
-            payable(msg.sender).transfer(refundAmount);
-            emit Withdraw(msg.sender, refundAmount);
+            if (refundAmount != highestBid) {
+                require(refundAmount > 0, "Incorrect refund amount");
+                bids[msg.sender] = 0;
+                payable(msg.sender).transfer(refundAmount);
+                emit Withdraw(msg.sender, refundAmount); 
+            } else {
+                revert("You can't withdraw while yours bid is highest");
+            }
+
         } else {
             revert("Auction ended");
         }
