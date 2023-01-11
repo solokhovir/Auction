@@ -30,15 +30,16 @@ contract Auction {
         return bids[msg.sender];
     }
 
-    function bid() external payable {        
-        highestBid = msg.value;
-        highestBidder = msg.sender;
-
-        if(highestBidder != address(0)) {
+    function bid() external payable {
+        if(address(seller) != msg.sender) {
+            require(msg.value > highestBid, "Too low");
+            highestBid = msg.value;
+            highestBidder = msg.sender;
             bids[highestBidder] += highestBid;
+            emit Bid(msg.sender, msg.value);
+        } else {
+            revert("You can not make a bid");
         }
-
-        emit Bid(msg.sender, msg.value);
     }
 
     function end() external onlySeller {        
@@ -46,16 +47,18 @@ contract Auction {
         if(highestBidder != address(0)) {
             seller.transfer(highestBid);
         }
-
         emit End(highestBidder, highestBid);
     }
 
     function withdraw() external {
-        uint refundAmount = bids[msg.sender];
-        require(refundAmount > 0, "Incorrect refund amount");
-
-        bids[msg.sender] = 0;
-        payable(msg.sender).transfer(refundAmount);
-        emit Withdraw(msg.sender, refundAmount);
+        if (ended != true) {
+            uint refundAmount = bids[msg.sender];
+            require(refundAmount > 0, "Incorrect refund amount");
+            bids[msg.sender] = 0;
+            payable(msg.sender).transfer(refundAmount);
+            emit Withdraw(msg.sender, refundAmount);
+        } else {
+            revert("Auction ended");
+        }
     }
 }
