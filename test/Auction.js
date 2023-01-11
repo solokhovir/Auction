@@ -37,8 +37,8 @@ describe("Auction", function() {
 
 	describe("Checks withdraw", () => {
 		it("Can't withdraw money without bid", async () => {
-			const tx = contract.connect(accounts[1]).withdraw();
-			await expect(tx).to.be.revertedWith("Incorrect refund amount");
+			const refund = contract.connect(accounts[1]).withdraw();
+			await expect(refund).to.be.revertedWith("Incorrect refund amount");
 		});
 
 		it("Withdraw money", async () => {
@@ -49,14 +49,28 @@ describe("Auction", function() {
 			await contract.connect(accounts[2]).bid({
 			value: ethers.utils.parseEther("15"),
 			});
-			const tx = await contract.connect(accounts[1]).withdraw();
+			const refund = await contract.connect(accounts[1]).withdraw();
 			const balance = await contract.connect(accounts[1]).getBalance();
 			expect(balance).to.equal(0);
-			await expect(tx).to.changeEtherBalance(accounts[1], firstInvestment);
-			
+			await expect(refund).to.changeEtherBalance(accounts[1], firstInvestment);
+		})
+		it("Should not revert money while bid is highest", async () => {
+			const firstInvestment = ethers.utils.parseEther("11");
+      await contract.connect(accounts[1]).bid({
+        value: ethers.utils.parseEther("11"),
+      });
+      await contract.connect(accounts[2]).bid({
+        value: ethers.utils.parseEther("15"),
+      });
+	  	await expect(contract.connect(accounts[2]).withdraw()).to.be.revertedWith(
+        "You can't withdraw while yours bid is highest"
+      );
 		})
 		it("Should not withdraw money after auction ended", async () => {
-			contract.connect(accounts[0]).end();
+			await contract.connect(accounts[1]).bid({
+        value: ethers.utils.parseEther("11"),
+      });
+			await contract.connect(accounts[0]).end();
 			await expect(contract.connect(accounts[1]).withdraw()).to.be.revertedWith("Auction ended");
 		});
 	});
@@ -67,6 +81,9 @@ describe("Auction", function() {
 		});
 
 		it("Should end", async () => {
+			await contract.connect(accounts[1]).bid({
+				value: ethers.utils.parseEther("11"),
+			});
 			await contract.connect(accounts[0]).end();
 		})
 	})
